@@ -30,11 +30,11 @@ const Index: React.FC = () => {
             </TabsList>
           </div>
           
-          <div className="p-6 h-[calc(100vh-180px)]">
-            <TabsContent value="backlog" className="m-0 h-full">
+          <div className="p-6">
+            <TabsContent value="backlog" className="m-0">
               <BacklogView />
             </TabsContent>
-            <TabsContent value="sprint" className="m-0 h-full">
+            <TabsContent value="sprint" className="m-0">
               <SprintView />
             </TabsContent>
           </div>
