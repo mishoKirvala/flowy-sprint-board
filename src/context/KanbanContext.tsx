@@ -205,6 +205,11 @@ export const KanbanProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       // Remove from backlog and add to first sprint column
       setKanbanState(prev => {
         const firstColumn = prev.sprint.columns[0];
+        if (!firstColumn) {
+          toast.error('Cannot move task: No columns in sprint board');
+          return prev;
+        }
+        
         const updatedColumns = prev.sprint.columns.map((col, index) => {
           if (index === 0) {
             return {
@@ -224,6 +229,8 @@ export const KanbanProvider: React.FC<{ children: ReactNode }> = ({ children }) 
         };
       });
       toast.success('Task moved to sprint board');
+    } else {
+      toast.error('Sprint is not active. Start sprint first.');
     }
   };
 

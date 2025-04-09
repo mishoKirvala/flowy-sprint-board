@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useKanban } from '@/context/KanbanContext';
 import { Task } from '@/types/kanban';
@@ -6,6 +5,7 @@ import TaskCard from './TaskCard';
 import TaskDialog from './TaskDialog';
 import { Button } from '@/components/ui/button';
 import { Plus, ChevronDown, ChevronUp, Play } from 'lucide-react';
+import { toast } from 'sonner';
 
 const BacklogView: React.FC = () => {
   const { kanbanState, moveTaskToSprint, startSprint } = useKanban();
@@ -13,6 +13,7 @@ const BacklogView: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined);
   const [sprintPlanningOpen, setSprintPlanningOpen] = useState(true);
   const [plannedTasks, setPlannedTasks] = useState<string[]>([]);
+  const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
 
   const handleAddTask = () => {
     setSelectedTask(undefined);
@@ -25,6 +26,11 @@ const BacklogView: React.FC = () => {
   };
 
   const handleStartSprint = () => {
+    if (plannedTasks.length === 0) {
+      toast.error("Add some tasks to sprint planning first");
+      return;
+    }
+    
     // Move all planned tasks to sprint
     plannedTasks.forEach(taskId => {
       moveTaskToSprint(taskId);
@@ -35,6 +41,35 @@ const BacklogView: React.FC = () => {
     
     // Clear planned tasks
     setPlannedTasks([]);
+    toast.success("Sprint started successfully");
+  };
+
+  const handleTaskSelect = (taskId: string, isMultiSelect: boolean) => {
+    setSelectedTasks(prev => {
+      if (prev.includes(taskId)) {
+        // Deselect if already selected
+        return prev.filter(id => id !== taskId);
+      } else {
+        // Select the task, clearing previous selections if not multi-select
+        return isMultiSelect ? [...prev, taskId] : [taskId];
+      }
+    });
+  };
+
+  const handleAddToPlanning = (taskIds: string[]) => {
+    const newPlannedTasks = [...plannedTasks];
+    taskIds.forEach(taskId => {
+      if (!newPlannedTasks.includes(taskId)) {
+        newPlannedTasks.push(taskId);
+      }
+    });
+    setPlannedTasks(newPlannedTasks);
+    setSelectedTasks([]);
+    toast.success(`${taskIds.length} task(s) added to sprint planning`);
+  };
+
+  const handleRemoveFromPlanning = (taskId: string) => {
+    setPlannedTasks(prev => prev.filter(id => id !== taskId));
   };
 
   return (
@@ -59,7 +94,7 @@ const BacklogView: React.FC = () => {
         {sprintPlanningOpen && (
           <div className="p-4 bg-slate-50 border-t">
             <div className="text-sm text-slate-500 mb-4">
-              Drag tasks here to add them to the sprint planning
+              Drag tasks here or select multiple tasks and use the "Add to Sprint Planning" button
             </div>
             
             <div 
@@ -67,9 +102,18 @@ const BacklogView: React.FC = () => {
               onDragOver={(e) => e.preventDefault()}
               onDrop={(e) => {
                 e.preventDefault();
+                // Check if the dragged task is part of a multi-selection
                 const taskId = e.dataTransfer.getData('taskId');
-                if (taskId && !plannedTasks.includes(taskId)) {
-                  setPlannedTasks([...plannedTasks, taskId]);
+                const isSelected = e.dataTransfer.getData('isSelected') === 'true';
+                
+                if (taskId) {
+                  if (isSelected && selectedTasks.length > 0) {
+                    // If it's a selected task and we have multiple selections, add all selected
+                    handleAddToPlanning(selectedTasks);
+                  } else if (!plannedTasks.includes(taskId)) {
+                    // Otherwise just add the single dragged task
+                    handleAddToPlanning([taskId]);
+                  }
                 }
               }}
             >
@@ -84,11 +128,20 @@ const BacklogView: React.FC = () => {
                     if (!task) return null;
                     
                     return (
-                      <div key={task.id}>
+                      <div key={task.id} className="relative">
                         <TaskCard 
                           task={task} 
                           onEdit={() => handleEditTask(task)} 
                         />
+                        <button 
+                          className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full h-5 w-5 flex items-center justify-center text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveFromPlanning(task.id);
+                          }}
+                        >
+                          ×
+                        </button>
                       </div>
                     );
                   })}
@@ -119,10 +172,21 @@ const BacklogView: React.FC = () => {
             {kanbanState.backlog.length}
           </span>
         </h2>
-        <Button onClick={handleAddTask} size="sm">
-          <Plus className="h-4 w-4 mr-1" />
-          Add Task
-        </Button>
+        <div className="flex gap-2">
+          {selectedTasks.length > 0 && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => handleAddToPlanning(selectedTasks)}
+            >
+              Add {selectedTasks.length} to Sprint Planning
+            </Button>
+          )}
+          <Button onClick={handleAddTask} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            Add Task
+          </Button>
+        </div>
       </div>
       
       <div className="pr-1">
@@ -138,7 +202,9 @@ const BacklogView: React.FC = () => {
                 <div key={task.id}>
                   <TaskCard 
                     task={task} 
-                    onEdit={() => handleEditTask(task)} 
+                    onEdit={() => handleEditTask(task)}
+                    isSelected={selectedTasks.includes(task.id)}
+                    onSelect={handleTaskSelect}
                   />
                 </div>
               ))
@@ -148,7 +214,15 @@ const BacklogView: React.FC = () => {
       
       <TaskDialog 
         open={taskDialogOpen} 
-        onOpenChange={setTaskDialogOpen} 
+        onOpenChange={(open) => {
+          setTaskDialogOpen(open);
+          // Clear selection when dialog closes to fix the issue with nothing being clickable
+          if (!open) {
+            setTimeout(() => {
+              setSelectedTasks([]);
+            }, 100);
+          }
+        }} 
         task={selectedTask} 
       />
     </div>

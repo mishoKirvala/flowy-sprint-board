@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState, useContext } from 'react';
 import { Task } from '@/types/kanban';
 import { useKanban } from '@/context/KanbanContext';
 import { 
@@ -9,7 +9,10 @@ import {
   ArrowRight, 
   ArrowDown,
   ArrowLeft,
-  User
+  User,
+  CheckCircle,
+  Circle,
+  Users
 } from 'lucide-react';
 import { 
   DropdownMenu,
@@ -19,18 +22,48 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger
+} from '@/components/ui/popover';
+
+// Sample team members - in a real app, this would come from a database
+const teamMembers = [
+  "John Doe",
+  "Jane Smith",
+  "Alex Johnson",
+  "Sarah Williams",
+  "Michael Brown"
+];
 
 interface TaskCardProps {
   task: Task;
   onEdit?: () => void;
+  isSelected?: boolean;
+  onSelect?: (taskId: string, isMultiSelect: boolean) => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
-  const { deleteTask, moveTaskToBacklog, moveTaskToSprint } = useKanban();
+const TaskCard: React.FC<TaskCardProps> = ({ 
+  task, 
+  onEdit, 
+  isSelected = false, 
+  onSelect 
+}) => {
+  const { deleteTask, moveTaskToBacklog, moveTaskToSprint, updateTask } = useKanban();
+  const [isDragging, setIsDragging] = useState(false);
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     deleteTask(task.id);
+  };
+
+  const handleSelect = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onSelect) {
+      // Pass true for Ctrl/Cmd key for multi-select
+      onSelect(task.id, e.ctrlKey || e.metaKey);
+    }
   };
 
   const getPriorityColor = (priority?: string) => {
@@ -56,16 +89,36 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
     moveTaskToBacklog(task.id);
   };
 
+  const assignUser = (userName: string) => {
+    updateTask(task.id, { assignee: userName });
+  };
+
   return (
     <div 
-      className="task-card cursor-grab active:cursor-grabbing" 
-      onClick={onEdit}
+      className={`task-card relative ${isDragging ? 'opacity-50' : ''} ${isSelected ? 'ring-2 ring-kanban-purple bg-kanban-soft-blue/20' : ''}`}
+      onClick={(e) => {
+        if (!e.defaultPrevented) {
+          handleSelect(e);
+        }
+      }}
       draggable={true}
       onDragStart={(e) => {
         e.dataTransfer.setData('taskId', task.id);
+        e.dataTransfer.setData('isSelected', String(isSelected));
+        setIsDragging(true);
+      }}
+      onDragEnd={() => {
+        setIsDragging(false);
       }}
     >
-      <div className="flex justify-between items-start mb-2">
+      <div className="absolute left-0 top-0 p-1" onClick={handleSelect}>
+        {isSelected ? 
+          <CheckCircle className="h-4 w-4 text-kanban-purple" /> : 
+          <Circle className="h-4 w-4 text-slate-300" />
+        }
+      </div>
+      
+      <div className="flex justify-between items-start mb-2 pl-6">
         <div className="font-medium truncate flex-1">{task.title}</div>
         <DropdownMenu>
           <DropdownMenuTrigger className="h-8 w-8 rounded-full flex items-center justify-center hover:bg-slate-100 -mr-2">
@@ -86,8 +139,11 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
               ></path>
             </svg>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={onEdit}>
+          <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+            <DropdownMenuItem onClick={(e) => {
+              e.stopPropagation();
+              if (onEdit) onEdit();
+            }}>
               <Edit className="h-4 w-4 mr-2" />
               Edit
             </DropdownMenuItem>
@@ -112,7 +168,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
       </div>
       
       {task.description && (
-        <div className="text-sm text-slate-500 mb-2 line-clamp-2">{task.description}</div>
+        <div className="text-sm text-slate-500 mb-2 line-clamp-2 pl-6">{task.description}</div>
       )}
       
       <div className="flex justify-between items-center mt-2">
@@ -120,15 +176,51 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
           {task.priority && (
             <span className={`h-2 w-2 rounded-full ${getPriorityColor(task.priority)}`} />
           )}
-          {task.assignee && (
-            <div className="flex items-center">
-              <Avatar className="h-6 w-6 text-xs">
-                <AvatarFallback className="bg-kanban-soft-blue text-kanban-purple">
-                  {task.assignee.substring(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-          )}
+          
+          <Popover>
+            <PopoverTrigger onClick={(e) => e.stopPropagation()} className="cursor-pointer">
+              {task.assignee ? (
+                <Avatar className="h-6 w-6 text-xs">
+                  <AvatarFallback className="bg-kanban-soft-blue text-kanban-purple">
+                    {task.assignee.substring(0, 2).toUpperCase()}
+                  </AvatarFallback>
+                </Avatar>
+              ) : (
+                <div className="flex items-center justify-center h-6 w-6 rounded-full border border-dashed border-slate-300 text-slate-400">
+                  <User size={14} />
+                </div>
+              )}
+            </PopoverTrigger>
+            <PopoverContent className="p-2 w-48" onClick={(e) => e.stopPropagation()}>
+              <div className="text-sm font-medium mb-2">Assign to:</div>
+              <div className="space-y-1">
+                <div 
+                  className={`flex items-center gap-2 p-1.5 rounded hover:bg-slate-100 cursor-pointer ${!task.assignee ? 'bg-slate-100' : ''}`}
+                  onClick={() => assignUser("unassigned")}
+                >
+                  <div className="flex items-center justify-center h-6 w-6 rounded-full border border-dashed border-slate-300 text-slate-400">
+                    <User size={14} />
+                  </div>
+                  <span>Unassigned</span>
+                </div>
+                
+                {teamMembers.map((member) => (
+                  <div 
+                    key={member}
+                    className={`flex items-center gap-2 p-1.5 rounded hover:bg-slate-100 cursor-pointer ${task.assignee === member ? 'bg-slate-100' : ''}`}
+                    onClick={() => assignUser(member)}
+                  >
+                    <Avatar className="h-6 w-6 text-xs">
+                      <AvatarFallback className="bg-kanban-soft-blue text-kanban-purple">
+                        {member.substring(0, 2).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>{member}</span>
+                  </div>
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import TaskDialog from './TaskDialog';
 import ColumnHeader from './ColumnHeader';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -23,6 +24,7 @@ const SprintView: React.FC = () => {
   const [selectedTask, setSelectedTask] = useState<Task | undefined>(undefined);
   const [addColumnDialogOpen, setAddColumnDialogOpen] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState('');
+  const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
 
   const handleAddTask = () => {
     setSelectedTask(undefined);
@@ -45,9 +47,40 @@ const SprintView: React.FC = () => {
   const handleColumnDrop = (e: React.DragEvent<HTMLDivElement>, columnId: string) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData('taskId');
-    if (taskId) {
+    const isSelected = e.dataTransfer.getData('isSelected') === 'true';
+    
+    if (isSelected && selectedTasks.length > 0) {
+      // Move all selected tasks
+      selectedTasks.forEach(id => {
+        moveTaskInSprint(id, columnId);
+      });
+      // Clear selection after moving
+      setSelectedTasks([]);
+      toast.success(`${selectedTasks.length} tasks moved`);
+    } else if (taskId) {
+      // Move single task
       moveTaskInSprint(taskId, columnId);
     }
+  };
+
+  const handleTaskSelect = (taskId: string, isMultiSelect: boolean) => {
+    setSelectedTasks(prev => {
+      if (prev.includes(taskId)) {
+        // Deselect if already selected
+        return prev.filter(id => id !== taskId);
+      } else {
+        // Select the task, clearing previous selections if not multi-select
+        return isMultiSelect ? [...prev, taskId] : [taskId];
+      }
+    });
+  };
+
+  const findTaskInColumns = (taskId: string): Task | undefined => {
+    for (const column of kanbanState.sprint.columns) {
+      const task = column.tasks.find(t => t.id === taskId);
+      if (task) return task;
+    }
+    return undefined;
   };
 
   return (
@@ -66,6 +99,11 @@ const SprintView: React.FC = () => {
           )}
         </h2>
         <div className="flex gap-2">
+          {selectedTasks.length > 0 && (
+            <div className="text-sm text-kanban-purple mr-2 flex items-center">
+              {selectedTasks.length} task(s) selected
+            </div>
+          )}
           <Button onClick={handleAddTask} size="sm">
             <Plus className="h-4 w-4 mr-1" />
             Add Task
@@ -130,7 +168,9 @@ const SprintView: React.FC = () => {
                         <div key={task.id}>
                           <TaskCard 
                             task={task} 
-                            onEdit={() => handleEditTask(task)} 
+                            onEdit={() => handleEditTask(task)}
+                            isSelected={selectedTasks.includes(task.id)}
+                            onSelect={handleTaskSelect}
                           />
                         </div>
                       ))
@@ -168,7 +208,15 @@ const SprintView: React.FC = () => {
       
       <TaskDialog 
         open={taskDialogOpen} 
-        onOpenChange={setTaskDialogOpen} 
+        onOpenChange={(open) => {
+          setTaskDialogOpen(open);
+          // Clear selection when dialog closes to fix the issue with nothing being clickable
+          if (!open) {
+            setTimeout(() => {
+              setSelectedTasks([]);
+            }, 100);
+          }
+        }} 
         task={selectedTask}
         isSprintView={true}
       />

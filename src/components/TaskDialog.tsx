@@ -79,7 +79,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       priority,
       status,
       isInSprint: isSprintView,
-      assignee
+      assignee: assignee === "unassigned" ? undefined : assignee
     };
     
     if (task) {
@@ -162,7 +162,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
               </Select>
             </div>
             
-            {isSprintView && (
+            {isSprintView && kanbanState.sprint.columns.length > 0 && (
               <div className="grid gap-2">
                 <Label htmlFor="status">Status</Label>
                 <Select 
