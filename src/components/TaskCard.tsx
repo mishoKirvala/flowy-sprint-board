@@ -7,7 +7,8 @@ import {
   Trash, 
   ArrowUp, 
   ArrowRight, 
-  ArrowDown 
+  ArrowDown,
+  ArrowLeft
 } from 'lucide-react';
 import { 
   DropdownMenu,
