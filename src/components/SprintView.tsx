@@ -53,7 +53,18 @@ const SprintView: React.FC = () => {
   return (
     <div className="h-full flex flex-col">
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-lg font-medium">{kanbanState.sprint.name}</h2>
+        <h2 className="text-lg font-medium flex items-center gap-2">
+          {kanbanState.sprint.name}
+          {kanbanState.sprint.isActive ? (
+            <span className="text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">
+              Active
+            </span>
+          ) : (
+            <span className="text-xs bg-orange-400 text-white px-2 py-0.5 rounded-full">
+              Planning
+            </span>
+          )}
+        </h2>
         <div className="flex gap-2">
           <Button onClick={handleAddTask} size="sm">
             <Plus className="h-4 w-4 mr-1" />
@@ -70,87 +81,90 @@ const SprintView: React.FC = () => {
         </div>
       </div>
       
-      <div className="flex-1 overflow-auto">
-        <div className="flex gap-4 h-full pb-4">
-          {kanbanState.sprint.columns.length === 0 ? (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center p-8">
-                <p className="text-slate-400 mb-4">No columns yet.</p>
+      {!kanbanState.sprint.isActive ? (
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center p-8 border-2 border-dashed border-slate-200 rounded-lg">
+            <p className="text-slate-400 mb-4">Sprint has not been started yet.</p>
+            <p className="text-slate-400 mb-4">Add tasks to Sprint Planning and start the sprint from the Backlog view.</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-auto">
+          <div className="flex gap-4 h-full pb-4">
+            {kanbanState.sprint.columns.length === 0 ? (
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center p-8">
+                  <p className="text-slate-400 mb-4">No columns yet.</p>
+                  <Button 
+                    onClick={() => setAddColumnDialogOpen(true)} 
+                    variant="outline"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Your First Column
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              kanbanState.sprint.columns.map((column) => (
+                <div 
+                  key={column.id} 
+                  className="board-column"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => handleColumnDrop(e, column.id)}
+                >
+                  <ColumnHeader 
+                    columnId={column.id} 
+                    title={column.title} 
+                    taskCount={column.tasks.length} 
+                  />
+                  
+                  <div className="flex-1 flex flex-col gap-3">
+                    {column.tasks.length === 0 ? (
+                      <div className="flex-1 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-lg">
+                        <p className="text-sm text-slate-400 p-4 text-center">
+                          Drop tasks here
+                        </p>
+                      </div>
+                    ) : (
+                      column.tasks.map((task) => (
+                        <div key={task.id}>
+                          <TaskCard 
+                            task={task} 
+                            onEdit={() => handleEditTask(task)} 
+                          />
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  
+                  <Button 
+                    onClick={handleAddTask} 
+                    variant="ghost" 
+                    className="w-full justify-start text-slate-500 hover:text-kanban-purple"
+                  >
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Task
+                  </Button>
+                </div>
+              ))
+            )}
+            
+            {/* Add Column Button for non-empty boards */}
+            {kanbanState.sprint.columns.length > 0 && (
+              <div className="min-w-[260px] w-[260px] flex items-center justify-center">
                 <Button 
                   onClick={() => setAddColumnDialogOpen(true)} 
-                  variant="outline"
+                  variant="outline" 
+                  className="w-full justify-center border-dashed"
                 >
                   <Plus className="h-4 w-4 mr-1" />
-                  Add Your First Column
+                  Add Column
                 </Button>
               </div>
-            </div>
-          ) : (
-            kanbanState.sprint.columns.map((column) => (
-              <div 
-                key={column.id} 
-                className="board-column"
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => handleColumnDrop(e, column.id)}
-              >
-                <ColumnHeader 
-                  columnId={column.id} 
-                  title={column.title} 
-                  taskCount={column.tasks.length} 
-                />
-                
-                <div className="flex-1 flex flex-col gap-3">
-                  {column.tasks.length === 0 ? (
-                    <div className="flex-1 flex items-center justify-center border-2 border-dashed border-slate-200 rounded-lg">
-                      <p className="text-sm text-slate-400 p-4 text-center">
-                        Drop tasks here
-                      </p>
-                    </div>
-                  ) : (
-                    column.tasks.map((task) => (
-                      <div
-                        key={task.id}
-                        draggable
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData('taskId', task.id);
-                        }}
-                      >
-                        <TaskCard 
-                          task={task} 
-                          onEdit={() => handleEditTask(task)} 
-                        />
-                      </div>
-                    ))
-                  )}
-                </div>
-                
-                <Button 
-                  onClick={handleAddTask} 
-                  variant="ghost" 
-                  className="w-full justify-start text-slate-500 hover:text-kanban-purple"
-                >
-                  <Plus className="h-4 w-4 mr-1" />
-                  Add Task
-                </Button>
-              </div>
-            ))
-          )}
-          
-          {/* Add Column Button for non-empty boards */}
-          {kanbanState.sprint.columns.length > 0 && (
-            <div className="min-w-[260px] w-[260px] flex items-center justify-center">
-              <Button 
-                onClick={() => setAddColumnDialogOpen(true)} 
-                variant="outline" 
-                className="w-full justify-center border-dashed"
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                Add Column
-              </Button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
-      </div>
+      )}
       
       <TaskDialog 
         open={taskDialogOpen} 

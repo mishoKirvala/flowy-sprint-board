@@ -18,6 +18,7 @@ export interface Column {
 export interface SprintData {
   name: string;
   columns: Column[];
+  isActive: boolean;
 }
 
 export interface KanbanState {

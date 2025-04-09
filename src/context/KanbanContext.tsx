@@ -43,7 +43,8 @@ const defaultTasks: Task[] = [
 
 const defaultSprint: SprintData = {
   name: 'Sprint 1',
-  columns: defaultColumns
+  columns: defaultColumns,
+  isActive: false
 };
 
 const defaultState: KanbanState = {
@@ -63,6 +64,7 @@ interface KanbanContextType {
   addColumn: (title: string) => void;
   updateColumn: (columnId: string, title: string) => void;
   deleteColumn: (columnId: string) => void;
+  startSprint: () => void;
 }
 
 // Create context
@@ -198,28 +200,43 @@ export const KanbanProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     const task = kanbanState.backlog.find(t => t.id === taskId);
     if (!task) return;
 
-    // Remove from backlog and add to first sprint column
-    setKanbanState(prev => {
-      const firstColumn = prev.sprint.columns[0];
-      const updatedColumns = prev.sprint.columns.map((col, index) => {
-        if (index === 0) {
-          return {
-            ...col,
-            tasks: [...col.tasks, { ...task, status: col.id, isInSprint: true }]
-          };
-        }
-        return col;
+    // Only move to sprint board if sprint is active
+    if (kanbanState.sprint.isActive) {
+      // Remove from backlog and add to first sprint column
+      setKanbanState(prev => {
+        const firstColumn = prev.sprint.columns[0];
+        const updatedColumns = prev.sprint.columns.map((col, index) => {
+          if (index === 0) {
+            return {
+              ...col,
+              tasks: [...col.tasks, { ...task, status: col.id, isInSprint: true }]
+            };
+          }
+          return col;
+        });
+        
+        return {
+          backlog: prev.backlog.filter(t => t.id !== taskId),
+          sprint: {
+            ...prev.sprint,
+            columns: updatedColumns
+          }
+        };
       });
-      
-      return {
-        backlog: prev.backlog.filter(t => t.id !== taskId),
-        sprint: {
-          ...prev.sprint,
-          columns: updatedColumns
-        }
-      };
-    });
-    toast.success('Task moved to sprint');
+      toast.success('Task moved to sprint board');
+    }
+  };
+
+  // Start the sprint (activate it)
+  const startSprint = () => {
+    setKanbanState(prev => ({
+      ...prev,
+      sprint: {
+        ...prev.sprint,
+        isActive: true
+      }
+    }));
+    toast.success('Sprint started');
   };
 
   // Move a task from sprint to backlog
@@ -368,7 +385,8 @@ export const KanbanProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     moveTaskInSprint,
     addColumn,
     updateColumn,
-    deleteColumn
+    deleteColumn,
+    startSprint
   };
 
   return (

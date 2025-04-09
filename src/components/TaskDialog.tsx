@@ -21,6 +21,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { User } from 'lucide-react';
 
 interface TaskDialogProps {
   open: boolean;
@@ -28,6 +29,15 @@ interface TaskDialogProps {
   task?: Task;
   isSprintView?: boolean;
 }
+
+// Sample team members - in a real app, this would come from a database
+const teamMembers = [
+  "John Doe",
+  "Jane Smith",
+  "Alex Johnson",
+  "Sarah Williams",
+  "Michael Brown"
+];
 
 const TaskDialog: React.FC<TaskDialogProps> = ({ 
   open, 
@@ -41,6 +51,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
   const [description, setDescription] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [status, setStatus] = useState('');
+  const [assignee, setAssignee] = useState<string | undefined>(undefined);
 
   // Reset form when dialog opens/closes or task changes
   useEffect(() => {
@@ -49,11 +60,13 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       setDescription(task.description || '');
       setPriority(task.priority || 'medium');
       setStatus(task.status);
+      setAssignee(task.assignee);
     } else {
       setTitle('');
       setDescription('');
       setPriority('medium');
       setStatus(isSprintView ? kanbanState.sprint.columns[0]?.id || '' : 'backlog');
+      setAssignee(undefined);
     }
   }, [task, open, isSprintView, kanbanState.sprint.columns]);
 
@@ -66,6 +79,7 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
       priority,
       status,
       isInSprint: isSprintView,
+      assignee
     };
     
     if (task) {
@@ -124,6 +138,26 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
                   <SelectItem value="low">Low</SelectItem>
                   <SelectItem value="medium">Medium</SelectItem>
                   <SelectItem value="high">High</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="assignee">Assignee</Label>
+              <Select 
+                value={assignee} 
+                onValueChange={setAssignee}
+              >
+                <SelectTrigger id="assignee" className="w-full">
+                  <SelectValue placeholder="Assign to team member" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Unassigned</SelectItem>
+                  {teamMembers.map((member) => (
+                    <SelectItem key={member} value={member}>
+                      {member}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

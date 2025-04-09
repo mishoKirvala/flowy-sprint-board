@@ -8,7 +8,8 @@ import {
   ArrowUp, 
   ArrowRight, 
   ArrowDown,
-  ArrowLeft
+  ArrowLeft,
+  User
 } from 'lucide-react';
 import { 
   DropdownMenu,
@@ -17,6 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 interface TaskCardProps {
   task: Task;
@@ -55,7 +57,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
   };
 
   return (
-    <div className="task-card" onClick={onEdit}>
+    <div 
+      className="task-card cursor-grab active:cursor-grabbing" 
+      onClick={onEdit}
+      draggable={true}
+      onDragStart={(e) => {
+        e.dataTransfer.setData('taskId', task.id);
+      }}
+    >
       <div className="flex justify-between items-start mb-2">
         <div className="font-medium truncate flex-1">{task.title}</div>
         <DropdownMenu>
@@ -107,12 +116,20 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
       )}
       
       <div className="flex justify-between items-center mt-2">
-        {task.priority && (
-          <span className={`h-2 w-2 rounded-full ${getPriorityColor(task.priority)}`} />
-        )}
-        {task.assignee && (
-          <div className="text-xs text-slate-500">{task.assignee}</div>
-        )}
+        <div className="flex items-center gap-2">
+          {task.priority && (
+            <span className={`h-2 w-2 rounded-full ${getPriorityColor(task.priority)}`} />
+          )}
+          {task.assignee && (
+            <div className="flex items-center">
+              <Avatar className="h-6 w-6 text-xs">
+                <AvatarFallback className="bg-kanban-soft-blue text-kanban-purple">
+                  {task.assignee.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
