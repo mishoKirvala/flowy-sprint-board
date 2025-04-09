@@ -145,14 +145,14 @@ const TaskDialog: React.FC<TaskDialogProps> = ({
             <div className="grid gap-2">
               <Label htmlFor="assignee">Assignee</Label>
               <Select 
-                value={assignee} 
+                value={assignee || "unassigned"} 
                 onValueChange={setAssignee}
               >
                 <SelectTrigger id="assignee" className="w-full">
                   <SelectValue placeholder="Assign to team member" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Unassigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
                   {teamMembers.map((member) => (
                     <SelectItem key={member} value={member}>
                       {member}
