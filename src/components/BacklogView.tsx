@@ -81,7 +81,7 @@ const BacklogView: React.FC = () => {
         </Button>
       </div>
       
-      <div className="flex-1 overflow-auto pr-1">
+      <div className="pr-1">
         <div className="grid gap-3">
           {kanbanState.backlog.length === 0 ? (
             <div className="text-center py-8 text-slate-400">
